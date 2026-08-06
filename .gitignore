@@ -1,0 +1,5 @@
+# bingosync is vendored only as a reference (its own git repo) - not part
+# of this project's history.
+/bingosync/
+
+.DS_Store
