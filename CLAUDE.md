@@ -120,6 +120,8 @@ switching to `channels_redis` first.
 - Frontend is `<script setup>` + Composition API throughout, Pinia setup-stores (not
   option stores), DTO types in `types/api.ts` mirroring the DRF serializers by hand —
   changing a serializer means updating that file.
+- Frontend named functions are `const` arrows, never `function` declarations — enforced
+  by `func-style` in `frontend/eslint.config.js`, so `npm run lint` catches regressions.
 - Work on this project has been run milestone-by-milestone with user approval between
   milestones (see `docs/BUILD_REPORT.md` §5); check before scoping work beyond what was
   asked.

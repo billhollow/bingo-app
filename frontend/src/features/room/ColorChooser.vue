@@ -4,14 +4,14 @@ import { useRoomStore } from "../../stores/room";
 
 const roomStore = useRoomStore();
 
-async function choose(color: PlayerColor) {
+const choose = async (color: PlayerColor) => {
   if (roomStore.currentPlayer?.color === color) return;
   try {
     await roomStore.setColor(color);
   } catch (err) {
     console.error("Failed to change color", err);
   }
-}
+};
 </script>
 
 <template>

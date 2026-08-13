@@ -8,5 +8,12 @@ export default [
   js.configs.recommended,
   ...pluginVue.configs["flat/recommended"],
   ...vueTsEslintConfig(),
+  // Named functions are const arrows; `function` declarations are an error.
+  {
+    rules: {
+      "func-style": ["error", "expression"],
+      "prefer-arrow-callback": "error",
+    },
+  },
   eslintConfigPrettier,
 ];

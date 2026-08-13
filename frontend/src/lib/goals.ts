@@ -7,21 +7,21 @@ export type GoalParseResult = { ok: true; goals: string[] } | { ok: false; error
  * objects carrying a `name` alongside metadata we don't use - so accepting a paste
  * directly saves stripping it by hand. Line splitting a pretty-printed array counts
  * every brace as a goal, so once the text looks like JSON we never fall back to it. */
-export function parseGoals(text: string): GoalParseResult {
+export const parseGoals = (text: string): GoalParseResult => {
   const trimmed = text.trim();
   if (trimmed.startsWith("[") || trimmed.startsWith("{")) return parseJsonGoals(trimmed);
 
   return { ok: true, goals: splitLines(text) };
-}
+};
 
-function splitLines(text: string): string[] {
+const splitLines = (text: string): string[] => {
   return text
     .split("\n")
     .map((line) => line.trim())
     .filter((line) => line.length > 0);
-}
+};
 
-function parseJsonGoals(text: string): GoalParseResult {
+const parseJsonGoals = (text: string): GoalParseResult => {
   let parsed: unknown;
   try {
     parsed = JSON.parse(text);
@@ -47,13 +47,13 @@ function parseJsonGoals(text: string): GoalParseResult {
   }
 
   return { ok: true, goals };
-}
+};
 
-function goalName(item: unknown): string | null {
+const goalName = (item: unknown): string | null => {
   if (typeof item === "string") return item.trim();
   if (item !== null && typeof item === "object" && "name" in item) {
     const name = (item as { name: unknown }).name;
     if (typeof name === "string") return name.trim();
   }
   return null;
-}
+};

@@ -30,7 +30,9 @@ defineProps<{
     Board type
     <select v-model="form.boardType">
       <option value="fixed">Fixed (exactly {{ requiredGoalCount }} goals, used as-is)</option>
-      <option value="randomized">Randomized (at least {{ requiredGoalCount }}, drawn from the pool)</option>
+      <option value="randomized">
+        Randomized (at least {{ requiredGoalCount }}, drawn from the pool)
+      </option>
     </select>
   </label>
 

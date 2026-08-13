@@ -42,7 +42,7 @@ watch(
 const requiredGoalCount = computed(() => board.rows * board.cols);
 const goalParse = computed(() => parseGoals(goalsText.value));
 
-async function onSubmit() {
+const onSubmit = async () => {
   if (!goalParse.value.ok) return;
 
   error.value = "";
@@ -64,7 +64,7 @@ async function onSubmit() {
   } finally {
     submitting.value = false;
   }
-}
+};
 </script>
 
 <template>

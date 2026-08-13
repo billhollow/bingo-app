@@ -34,7 +34,7 @@ const error = ref("");
 const requiredGoalCount = computed(() => board.rows * board.cols);
 const goalParse = computed(() => parseGoals(form.goalsText));
 
-async function onSubmit() {
+const onSubmit = async () => {
   if (!goalParse.value.ok) return;
 
   error.value = "";
@@ -59,7 +59,7 @@ async function onSubmit() {
   } finally {
     submitting.value = false;
   }
-}
+};
 </script>
 
 <template>
@@ -85,7 +85,9 @@ async function onSubmit() {
         <template #goals>
           <label>
             Goals (one per line or a JSON list{{
-              board.boardType === "fixed" ? `, exactly ${requiredGoalCount}` : `, at least ${requiredGoalCount}`
+              board.boardType === "fixed"
+                ? `, exactly ${requiredGoalCount}`
+                : `, at least ${requiredGoalCount}`
             }})
             <textarea v-model="form.goalsText" rows="10" required></textarea>
           </label>

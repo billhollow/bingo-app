@@ -12,7 +12,7 @@ const chatBody = ref<HTMLElement | null>(null);
 // EventDTO is discriminated on `type`, so each branch's payload narrows on its
 // own and a new backend event type breaks the build here rather than falling
 // through silently.
-function describe(event: EventDTO): string {
+const describe = (event: EventDTO): string => {
   const name = event.player.is_spectator ? `${event.player.name} (spectator)` : event.player.name;
   switch (event.type) {
     case "chat":
@@ -28,15 +28,15 @@ function describe(event: EventDTO): string {
     case "new_card":
       return `${name} generated a new card${event.payload.seed ? ` (seed: ${event.payload.seed})` : ""}`;
   }
-}
+};
 
-function formatTime(timestamp: string): string {
+const formatTime = (timestamp: string): string => {
   return new Date(timestamp).toLocaleTimeString([], {
     hour: "2-digit",
     minute: "2-digit",
     second: "2-digit",
   });
-}
+};
 
 watch(
   () => roomStore.events.length,
@@ -46,7 +46,7 @@ watch(
   },
 );
 
-async function onSend() {
+const onSend = async () => {
   const text = messageText.value.trim();
   if (!text) return;
   messageText.value = "";
@@ -55,7 +55,7 @@ async function onSend() {
   } catch (err) {
     console.error("Failed to send message", err);
   }
-}
+};
 </script>
 
 <template>

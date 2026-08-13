@@ -50,20 +50,20 @@ export interface MarkSquareInput {
 // The two endpoints you can reach without a token, because they're how you
 // get one.
 
-export function createRoom(input: CreateRoomInput) {
+export const createRoom = (input: CreateRoomInput) => {
   return apiPost<RoomSessionDTO>("/api/rooms/", input);
-}
+};
 
-export function joinRoom(roomId: string, input: JoinRoomInput) {
+export const joinRoom = (roomId: string, input: JoinRoomInput) => {
   return apiPost<RoomSessionDTO>(`/api/rooms/${roomId}/join/`, input);
-}
+};
 
 /** Every room-scoped endpoint, bound to one room and token.
  *
  * Mirrors the nesting in backend/rooms/urls.py: the `/api/rooms/<id>/` prefix
  * and the bearer token are each written once here, so callers name only the
  * action. The room store builds one of these in load() and holds it. */
-export function roomClient(roomId: string, token: string) {
+export const roomClient = (roomId: string, token: string) => {
   const path = (suffix: string) => `/api/rooms/${roomId}/${suffix}`;
   const auth = { token };
 
@@ -78,6 +78,6 @@ export function roomClient(roomId: string, token: string) {
     chat: (text: string) => apiPost<EventDTO>(path("chat/"), { text }, auth),
     reveal: () => apiPost<EventDTO>(path("reveal/"), {}, auth),
   };
-}
+};
 
 export type RoomClient = ReturnType<typeof roomClient>;

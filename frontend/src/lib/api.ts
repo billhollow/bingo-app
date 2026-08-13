@@ -15,12 +15,12 @@ interface RequestOptions {
   token?: string;
 }
 
-async function request<T>(
+const request = async <T>(
   method: string,
   path: string,
   body: unknown,
   options: RequestOptions = {},
-): Promise<T> {
+): Promise<T> => {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (options.token) {
     headers.Authorization = `Bearer ${options.token}`;
@@ -39,7 +39,7 @@ async function request<T>(
     throw new ApiError(response.status, data ?? response.statusText);
   }
   return data as T;
-}
+};
 
 export const apiGet = <T>(path: string, options?: RequestOptions) =>
   request<T>("GET", path, undefined, options);
@@ -48,7 +48,7 @@ export const apiPost = <T>(path: string, body?: unknown, options?: RequestOption
   request<T>("POST", path, body, options);
 
 /** Best-effort extraction of a human-readable message from an ApiError. */
-export function errorMessage(err: unknown): string {
+export const errorMessage = (err: unknown): string => {
   if (err instanceof ApiError) {
     if (typeof err.detail === "string") return err.detail;
     if (err.detail && typeof err.detail === "object") {
@@ -64,4 +64,4 @@ export function errorMessage(err: unknown): string {
     return err.message;
   }
   return err instanceof Error ? err.message : String(err);
-}
+};

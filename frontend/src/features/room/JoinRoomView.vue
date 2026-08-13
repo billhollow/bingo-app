@@ -20,7 +20,7 @@ const form = reactive({
 const submitting = ref(false);
 const error = ref("");
 
-async function onSubmit() {
+const onSubmit = async () => {
   error.value = "";
   submitting.value = true;
   try {
@@ -36,7 +36,7 @@ async function onSubmit() {
   } finally {
     submitting.value = false;
   }
-}
+};
 </script>
 
 <template>

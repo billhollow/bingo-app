@@ -27,14 +27,14 @@ export const COLOR_HEX: Record<PlayerColor, string> = {
   yellow: "#d69e2e",
 };
 
-export function hexFor(color: string): string {
+export const hexFor = (color: string): string => {
   return COLOR_HEX[color as PlayerColor] ?? "#999999";
-}
+};
 
 /** CSS `background` value for a square: solid for one color, evenly-striped
  * diagonal bands for several overlapping marks (non-lockout mode), nothing
  * for a blank square. */
-export function squareBackground(colors: string[]): string {
+export const squareBackground = (colors: string[]): string => {
   if (colors.length === 0) return "transparent";
   if (colors.length === 1) return hexFor(colors[0]);
 
@@ -44,4 +44,4 @@ export function squareBackground(colors: string[]): string {
     return [`${hex} ${index * step}%`, `${hex} ${(index + 1) * step}%`];
   });
   return `linear-gradient(135deg, ${stops.join(", ")})`;
-}
+};

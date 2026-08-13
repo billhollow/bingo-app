@@ -7,9 +7,7 @@ import type { SquareDTO } from "../../types/api";
 
 const roomStore = useRoomStore();
 
-const showCover = computed(
-  () => Boolean(roomStore.room?.hide_card) && !roomStore.cardRevealed,
-);
+const showCover = computed(() => Boolean(roomStore.room?.hide_card) && !roomStore.cardRevealed);
 
 const gridStyle = computed(() => {
   const game = roomStore.game;
@@ -21,7 +19,7 @@ const gridStyle = computed(() => {
   };
 });
 
-function onSquareClick(square: SquareDTO) {
+const onSquareClick = (square: SquareDTO) => {
   const player = roomStore.currentPlayer;
   const game = roomStore.game;
   if (!player || player.is_spectator || !game) return;
@@ -42,15 +40,15 @@ function onSquareClick(square: SquareDTO) {
   roomStore.toggleSquare(square.row, square.col, chosenColor, remove).catch((err: unknown) => {
     console.error("Failed to mark square", err);
   });
-}
+};
 
-async function onReveal() {
+const onReveal = async () => {
   try {
     await roomStore.reveal();
   } catch (err) {
     console.error("Failed to reveal card", err);
   }
-}
+};
 </script>
 
 <template>
