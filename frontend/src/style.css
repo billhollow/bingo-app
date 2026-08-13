@@ -122,6 +122,13 @@ a {
   color: var(--error-color);
 }
 
+/* Sits directly under a goals textarea, so it hugs the field above it. */
+.goal-count {
+  margin: -0.5rem 0 0;
+  font-size: 0.85rem;
+  opacity: 0.7;
+}
+
 .btn-primary {
   align-self: flex-start;
   padding: 0.55rem 1.2rem;

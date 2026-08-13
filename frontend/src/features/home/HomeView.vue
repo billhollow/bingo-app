@@ -32,9 +32,11 @@ const submitting = ref(false);
 const error = ref("");
 
 const requiredGoalCount = computed(() => board.rows * board.cols);
-const parsedGoals = computed(() => parseGoals(form.goalsText));
+const goalParse = computed(() => parseGoals(form.goalsText));
 
 async function onSubmit() {
+  if (!goalParse.value.ok) return;
+
   error.value = "";
   submitting.value = true;
   try {
@@ -42,7 +44,7 @@ async function onSubmit() {
       name: form.name,
       passphrase: form.passphrase,
       creator_name: form.creatorName,
-      goals: parsedGoals.value,
+      goals: goalParse.value.goals,
       board_type: board.boardType,
       rows: board.rows,
       cols: board.cols,
@@ -82,12 +84,13 @@ async function onSubmit() {
       <BoardConfigFields v-model="board" :required-goal-count="requiredGoalCount">
         <template #goals>
           <label>
-            Goals (one per line{{
+            Goals (one per line or a JSON list{{
               board.boardType === "fixed" ? `, exactly ${requiredGoalCount}` : `, at least ${requiredGoalCount}`
             }})
             <textarea v-model="form.goalsText" rows="10" required></textarea>
           </label>
-          <p class="goal-count">{{ parsedGoals.length }} goal(s) entered</p>
+          <p v-if="goalParse.ok" class="goal-count">{{ goalParse.goals.length }} goal(s) entered</p>
+          <p v-else class="error">{{ goalParse.error }}</p>
         </template>
       </BoardConfigFields>
 
@@ -98,7 +101,7 @@ async function onSubmit() {
 
       <p v-if="error" class="error">{{ error }}</p>
 
-      <button type="submit" class="btn-primary" :disabled="submitting">
+      <button type="submit" class="btn-primary" :disabled="submitting || !goalParse.ok">
         {{ submitting ? "Creating…" : "Create room" }}
       </button>
     </form>
@@ -109,11 +112,5 @@ async function onSubmit() {
 .home {
   max-width: 40rem;
   margin: 0 auto;
-}
-
-.goal-count {
-  margin: -0.5rem 0 0;
-  font-size: 0.85rem;
-  opacity: 0.7;
 }
 </style>
