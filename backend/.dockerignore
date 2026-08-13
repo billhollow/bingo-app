@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+*.pyc
+staticfiles/
+# Config comes from docker-compose, and the host .env carries DEBUG=True plus a dev
+# SECRET_KEY - baking either into the image would silently override it.
+.env
+# The container's database lives on a volume at /data, never in the image.
+db.sqlite3
+bingosync

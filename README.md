@@ -41,6 +41,36 @@ frontend/
     types/              TypeScript DTOs mirroring the DRF serializers
 ```
 
+## Running it with Docker
+
+The quickest way to just *run* the app — no Python or Node toolchain on the host:
+
+```bash
+docker compose up --build      # first time; `docker compose up -d` afterwards
+```
+
+Then open `http://localhost:8080`. nginx serves the built SPA and reverse-proxies
+`/api`, `/admin`, `/static` and `/ws` to Daphne, so the whole app lives on one
+origin (which is why CORS doesn't come into it and the frontend falls back to
+`window.location.origin` when `VITE_API_BASE_URL` is unset).
+
+```bash
+docker compose logs -f backend   # Daphne logs
+docker compose down              # stop; rooms survive
+docker compose down -v           # stop and wipe the database
+```
+
+The SQLite database lives on the `bingo-data` volume, so rooms persist across
+restarts. Two things are deliberate and worth knowing before exposing this beyond
+your own machine: `SECRET_KEY` has an insecure default (override it via the
+environment or a root `.env` — note that changing it invalidates every existing
+player token), and `ALLOWED_HOSTS` is `*` because nginx forwards whatever `Host`
+the browser sent. Only one Daphne process runs, since `InMemoryChannelLayer`
+can't broadcast between workers.
+
+This setup is for running the app, not developing it — there's no hot reload.
+For that, use the local setup below.
+
 ## Running it locally
 
 ### Backend

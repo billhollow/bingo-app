@@ -1,0 +1,45 @@
+services:
+  backend:
+    build: ./backend
+    environment:
+      # Player auth tokens are signed with this (rooms/tokens.py), so a stable default
+      # keeps everyone logged in across restarts. Override for anything public.
+      SECRET_KEY: ${SECRET_KEY:-local-docker-insecure-key-change-in-prod}
+      DEBUG: "False"
+      # nginx forwards whatever Host the browser sent - localhost, a LAN IP, a hostname.
+      # Fine for a locally-run image; narrow this if you expose it.
+      ALLOWED_HOSTS: "*"
+      # On the named volume, not in the image.
+      DATABASE_URL: sqlite:////data/db.sqlite3
+      # CORS is unset on purpose: nginx puts the SPA and the API on one origin.
+    volumes:
+      - bingo-data:/data
+    healthcheck:
+      # python:slim ships no curl or wget.
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/healthcheck/')",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+    # No published port: the backend is only reachable through nginx. Add
+    # `ports: ["8000:8000"]` temporarily to hit DRF directly.
+
+  web:
+    build: ./frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      # Waiting for healthy also means nginx can always resolve the `backend` name.
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  bingo-data:

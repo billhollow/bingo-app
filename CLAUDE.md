@@ -39,6 +39,14 @@ part of `manage.py test`:
 
 ```bash
 node scripts/smoke_test.mjs
+SMOKE_TEST_BASE_URL=http://localhost:8080 node scripts/smoke_test.mjs   # against Docker
+```
+
+Docker (from the repo root) — the packaged "just run it" path, no hot reload:
+
+```bash
+docker compose up --build     # whole app on http://localhost:8080
+docker compose down -v        # stop and wipe the SQLite volume
 ```
 
 Config comes from `backend/.env` (copy of `.env.example`; `SECRET_KEY` is required or
@@ -52,6 +60,14 @@ Django 5.2 is pinned deliberately — Django 6.x breaks DRF 3.17 (`ImportError: 
 that HTTP round-trips in both directions), this app runs everything under Daphne.
 `daphne` is first in `INSTALLED_APPS` so `runserver` is ASGI-aware; `config/asgi.py`
 routes HTTP to Django and websockets to `RoomConsumer` via `core/routing.py`.
+
+**The Docker image serves everything from one origin.** `docker-compose.yml` runs the
+backend (Daphne, one process — the in-memory channel layer forbids more) behind an nginx
+container that serves the built SPA and proxies `/api`, `/admin`, `/static` and `/ws` to
+it. That's why `api.ts` falls back to `window.location.origin` when `VITE_API_BASE_URL`
+is unset, and why nginx sets a 1h `proxy_read_timeout` on `/ws/` — `RoomConsumer` has no
+heartbeat, so the 60s default would drop idle sockets. Static files are served by
+WhiteNoise, since Django won't serve `/static/` itself with `DEBUG=False`.
 
 **Writes go over REST; state changes come back over the websocket.** Every mutation is a
 DRF `POST` under `/api/rooms/<uuid>/…`. The consumer accepts no client messages

@@ -1,4 +1,7 @@
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+// Unset in the Docker image: nginx serves the SPA and proxies /api and /ws to Daphne on
+// the same origin, so the base can't be baked in at build time (it's whatever host the
+// browser used). Dev still points at :8000 via frontend/.env.development.
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || window.location.origin;
 
 export class ApiError extends Error {
   status: number;

@@ -1,0 +1,7 @@
+node_modules
+dist
+dist-ssr
+# .env.development would not be read by `vite build` anyway, but keeping env files out
+# of the image makes it obvious the built SPA carries no baked-in host.
+.env*
+*.log
