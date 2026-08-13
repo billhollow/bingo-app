@@ -16,21 +16,24 @@ const props = defineProps<{ roomId: string }>();
 const session = useSessionStore();
 const roomStore = useRoomStore();
 
-const loading = ref(true);
-const loadError = ref("");
+// the router guard normally redirects to /join before this ever renders
+const stored = session.getSession(props.roomId);
+
+const loading = ref(stored !== null);
+const loadError = ref(stored ? "" : "You haven't joined this room yet.");
+
+// Opened here rather than inside onMounted: useRoomSocket registers an
+// onBeforeUnmount hook, which only binds to this component during synchronous
+// setup. Awaiting first would leave the socket unowned - it would never close
+// on navigate-away, and its auto-reconnect would keep it alive forever.
+if (stored) {
+  useRoomSocket(props.roomId, stored.token, roomStore.applyEvent);
+}
 
 onMounted(async () => {
-  const stored = session.getSession(props.roomId);
-  if (!stored) {
-    // the router guard normally redirects to /join before this ever renders
-    loadError.value = "You haven't joined this room yet.";
-    loading.value = false;
-    return;
-  }
-
+  if (!stored) return;
   try {
     await roomStore.load(props.roomId, stored.token, stored.playerId);
-    useRoomSocket(props.roomId, stored.token, roomStore.applyEvent);
   } catch (err) {
     loadError.value = errorMessage(err);
   } finally {
@@ -96,10 +99,6 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   gap: 1rem;
-}
-
-.error {
-  color: #d33;
 }
 
 @media (max-width: 60rem) {

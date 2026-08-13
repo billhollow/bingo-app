@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 
 from django.db import transaction
+from rest_framework import status
+from rest_framework.exceptions import APIException
 
 from rooms.board_generator import generate_board
 from rooms.choices import BoardType, LockoutMode
@@ -8,13 +10,25 @@ from rooms.colors import Color
 from rooms.models import Event, Game, Player, Room, Square
 from rooms.tokens import issue_player_token
 
+# Domain errors subclass APIException so they carry their own HTTP status
+# (see the note in board_generator.py) - views never translate exceptions.
 
-class WrongPassphraseError(Exception):
-    pass
+
+class WrongPassphraseError(APIException):
+    status_code = status.HTTP_403_FORBIDDEN
 
 
-class LockoutViolationError(Exception):
-    pass
+class LockoutViolationError(APIException):
+    status_code = status.HTTP_409_CONFLICT
+
+
+class SquareNotFoundError(APIException):
+    status_code = status.HTTP_404_NOT_FOUND
+
+
+class NoCurrentGameError(APIException):
+    status_code = status.HTTP_409_CONFLICT
+    default_detail = "This room has no board yet."
 
 
 @dataclass(frozen=True)
@@ -29,6 +43,34 @@ def _build_squares(game: Game, goal_strings: list[str]) -> None:
         row, col = divmod(index, game.cols)
         squares.append(Square(game=game, row=row, col=col, goal=goal))
     Square.objects.bulk_create(squares)
+
+
+def _create_game(
+    *,
+    room: Room,
+    goals: list[str],
+    board_type: str,
+    rows: int,
+    cols: int,
+    lockout_mode: str,
+    seed: str,
+) -> Game:
+    """Build a room's board. Shared by create_room and start_new_game.
+
+    Raises InvalidBoardError (from generate_board) if `goals` doesn't fit
+    board_type/rows/cols; callers are transactional, so nothing is written.
+    """
+    goal_strings = generate_board(goals=goals, rows=rows, cols=cols, board_type=board_type, seed=seed)
+    game = Game.objects.create(
+        room=room,
+        rows=rows,
+        cols=cols,
+        board_type=board_type,
+        lockout_mode=lockout_mode,
+        seed=seed,
+    )
+    _build_squares(game, goal_strings)
+    return game
 
 
 def emit_event(*, room: Room, player: Player, event_type: str, payload: dict) -> Event:
@@ -58,24 +100,22 @@ def create_room(
 ) -> tuple[Room, PlayerSession]:
     """Create a room, its first game/board, and the creator's player+token.
 
-    Raises InvalidBoardError (from generate_board) if `goals` doesn't fit
-    board_type/rows/cols; the whole transaction rolls back in that case.
+    Raises InvalidBoardError if `goals` doesn't fit board_type/rows/cols; the
+    whole transaction rolls back in that case.
     """
-    goal_strings = generate_board(goals=goals, rows=rows, cols=cols, board_type=board_type, seed=seed)
-
     room = Room(name=name, hide_card=hide_card)
     room.set_passphrase(passphrase)
     room.save()
 
-    game = Game.objects.create(
+    _create_game(
         room=room,
+        goals=goals,
+        board_type=board_type,
         rows=rows,
         cols=cols,
-        board_type=board_type,
         lockout_mode=lockout_mode,
         seed=seed,
     )
-    _build_squares(game, goal_strings)
 
     creator = Player.objects.create(room=room, name=creator_name, is_spectator=is_spectator)
     session = PlayerSession(player=creator, token=issue_player_token(creator))
@@ -105,17 +145,15 @@ def start_new_game(
     hide_card: bool = False,
 ) -> tuple[Game, Event]:
     """Generate a new board for a room (bingosync's "new card" action)."""
-    goal_strings = generate_board(goals=goals, rows=rows, cols=cols, board_type=board_type, seed=seed)
-
-    game = Game.objects.create(
+    game = _create_game(
         room=room,
+        goals=goals,
+        board_type=board_type,
         rows=rows,
         cols=cols,
-        board_type=board_type,
         lockout_mode=lockout_mode,
         seed=seed,
     )
-    _build_squares(game, goal_strings)
 
     if hide_card != room.hide_card:
         room.hide_card = hide_card
@@ -139,7 +177,10 @@ def mark_square(*, game: Game, player: Player, row: int, col: int, color: Color,
     isn't yours. Non-lockout mode allows any player to freely add/remove
     their own color regardless of what's already there.
     """
-    square = Square.objects.select_for_update().get(game=game, row=row, col=col)
+    try:
+        square = Square.objects.select_for_update().get(game=game, row=row, col=col)
+    except Square.DoesNotExist:
+        raise SquareNotFoundError(f"No square at row {row}, column {col}.") from None
 
     if game.lockout_mode == LockoutMode.LOCKOUT:
         if not remove and square.color != Color.BLANK:

@@ -28,6 +28,9 @@ def resolve_player_token(token: str) -> Player:
         raise InvalidTokenError("Invalid or tampered token.") from exc
 
     try:
-        return Player.objects.get(id=data["player_id"])
+        # select_related("room"): every room-scoped view reads request.user.room
+        # (for the permission check and as the room itself), so fetching it here
+        # keeps that a single query instead of a lazy second one.
+        return Player.objects.select_related("room").get(id=data["player_id"])
     except (Player.DoesNotExist, KeyError, ValueError) as exc:
         raise InvalidTokenError("Token does not match any player.") from exc

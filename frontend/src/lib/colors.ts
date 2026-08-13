@@ -27,7 +27,7 @@ export const COLOR_HEX: Record<PlayerColor, string> = {
   yellow: "#d69e2e",
 };
 
-function hexFor(color: string): string {
+export function hexFor(color: string): string {
   return COLOR_HEX[color as PlayerColor] ?? "#999999";
 }
 

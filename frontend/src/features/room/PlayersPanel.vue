@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 
-import { COLOR_HEX, type PlayerColor } from "../../lib/colors";
+import { hexFor } from "../../lib/colors";
 import { useRoomStore } from "../../stores/room";
 
 const roomStore = useRoomStore();
@@ -20,10 +20,7 @@ const visiblePlayers = computed(() =>
     <h2>Players</h2>
     <ul>
       <li v-for="player in visiblePlayers" :key="player.id">
-        <span
-          class="color-dot"
-          :style="{ background: COLOR_HEX[player.color as PlayerColor] ?? '#999' }"
-        />
+        <span class="color-dot" :style="{ background: hexFor(player.color) }" />
         <span class="name">{{ player.name }}</span>
         <span class="counts">
           {{ roomStore.squareCountForColor(player.color) }}

@@ -126,3 +126,35 @@ class ColorChatRevealFeedApiTests(GameplayApiTestsBase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         texts = [event["payload"].get("text") for event in response.data if event["type"] == "chat"]
         self.assertEqual(texts, ["first", "second"])
+
+    # Both endpoints cost a constant 2 queries: resolve the bearer token to a
+    # player (joined to its room), then the rows themselves plus one bulk
+    # connection lookup. PlayerSerializer is nested inside EventSerializer, so
+    # before views.connection_map() the feed cost an extra query *per event*.
+
+    def test_feed_query_count_does_not_grow_with_the_feed(self):
+        self.as_alice()
+        for i in range(3):
+            self.client.post(f"/api/rooms/{self.room_id}/chat/", {"text": f"msg {i}"}, format="json")
+        with self.assertNumQueries(3):
+            self.client.get(f"/api/rooms/{self.room_id}/feed/")
+
+        for i in range(20):
+            self.client.post(f"/api/rooms/{self.room_id}/chat/", {"text": f"more {i}"}, format="json")
+        with self.assertNumQueries(3):
+            self.client.get(f"/api/rooms/{self.room_id}/feed/")
+
+    def test_players_query_count_does_not_grow_with_the_roster(self):
+        self.as_alice()
+        with self.assertNumQueries(3):
+            self.client.get(f"/api/rooms/{self.room_id}/players/")
+
+        for i in range(10):
+            self.client.post(
+                f"/api/rooms/{self.room_id}/join/",
+                {"passphrase": "hunter2", "player_name": f"Player {i}"},
+                format="json",
+            )
+        self.as_alice()
+        with self.assertNumQueries(3):
+            self.client.get(f"/api/rooms/{self.room_id}/players/")

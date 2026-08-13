@@ -42,7 +42,7 @@ async function onSubmit() {
 <template>
   <div class="join">
     <h1>Join room</h1>
-    <form class="join-form" @submit.prevent="onSubmit">
+    <form class="stack-form" @submit.prevent="onSubmit">
       <label>
         Your nickname
         <input v-model="form.playerName" required maxlength="50" />
@@ -60,7 +60,7 @@ async function onSubmit() {
 
       <p v-if="error" class="error">{{ error }}</p>
 
-      <button type="submit" :disabled="submitting">
+      <button type="submit" class="btn-primary" :disabled="submitting">
         {{ submitting ? "Joining…" : "Join" }}
       </button>
     </form>
@@ -71,55 +71,5 @@ async function onSubmit() {
 .join {
   max-width: 24rem;
   margin: 0 auto;
-}
-
-.join-form {
-  display: flex;
-  flex-direction: column;
-  gap: 0.9rem;
-}
-
-.join-form label {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-  font-weight: 600;
-}
-
-.join-form label.checkbox {
-  flex-direction: row;
-  align-items: center;
-  font-weight: 400;
-}
-
-input[type="checkbox"] {
-  width: auto;
-}
-
-input {
-  padding: 0.4rem 0.5rem;
-  font: inherit;
-  border-radius: 4px;
-  border: 1px solid var(--border-color, #8886);
-}
-
-.error {
-  color: #d33;
-}
-
-button {
-  align-self: flex-start;
-  padding: 0.55rem 1.2rem;
-  font-weight: 600;
-  border-radius: 6px;
-  border: none;
-  background: #4f6df5;
-  color: white;
-  cursor: pointer;
-}
-
-button:disabled {
-  opacity: 0.6;
-  cursor: default;
 }
 </style>

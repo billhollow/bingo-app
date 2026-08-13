@@ -82,8 +82,8 @@ async function onReveal() {
 .board {
   display: grid;
   gap: 2px;
-  background: var(--border-color, #8886);
-  border: 1px solid var(--border-color, #8886);
+  background: var(--border-color);
+  border: 1px solid var(--border-color);
 }
 
 .square {

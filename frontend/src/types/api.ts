@@ -33,8 +33,6 @@ export interface SquareDTO {
   colors: string[];
 }
 
-export type EventType = "chat" | "goal" | "color" | "revealed" | "connection" | "new_card";
-
 export interface GoalEventPayload {
   row: number;
   col: number;
@@ -62,21 +60,26 @@ export interface NewCardEventPayload {
   hide_card: boolean;
 }
 
-export type EventPayload =
-  | GoalEventPayload
-  | ColorEventPayload
-  | ChatEventPayload
-  | ConnectionEventPayload
-  | NewCardEventPayload
-  | Record<string, never>;
-
-export interface EventDTO {
-  type: EventType;
+interface EventBase {
   player: PlayerDTO;
+  /** The player's colour when the event happened, not their colour now -
+   * the backend snapshots it so old feed entries keep their original colour. */
   player_color: string;
-  payload: EventPayload;
   created_at: string;
 }
+
+/** Discriminated on `type`, so `event.payload` narrows automatically and
+ * switches over event kinds are checked for exhaustiveness. Mirrors
+ * Event.Type in backend/rooms/models.py. */
+export type EventDTO =
+  | (EventBase & { type: "goal"; payload: GoalEventPayload })
+  | (EventBase & { type: "color"; payload: ColorEventPayload })
+  | (EventBase & { type: "chat"; payload: ChatEventPayload })
+  | (EventBase & { type: "connection"; payload: ConnectionEventPayload })
+  | (EventBase & { type: "revealed"; payload: Record<string, never> })
+  | (EventBase & { type: "new_card"; payload: NewCardEventPayload });
+
+export type EventType = EventDTO["type"];
 
 export interface RoomSessionDTO {
   room: RoomDTO;

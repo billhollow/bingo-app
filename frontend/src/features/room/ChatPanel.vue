@@ -2,41 +2,31 @@
 import { nextTick, ref, watch } from "vue";
 
 import { useRoomStore } from "../../stores/room";
-import type {
-  ChatEventPayload,
-  ColorEventPayload,
-  ConnectionEventPayload,
-  EventDTO,
-  GoalEventPayload,
-  NewCardEventPayload,
-} from "../../types/api";
+import type { EventDTO } from "../../types/api";
 
 const roomStore = useRoomStore();
 
 const messageText = ref("");
 const chatBody = ref<HTMLElement | null>(null);
 
+// EventDTO is discriminated on `type`, so each branch's payload narrows on its
+// own and a new backend event type breaks the build here rather than falling
+// through silently.
 function describe(event: EventDTO): string {
   const name = event.player.is_spectator ? `${event.player.name} (spectator)` : event.player.name;
   switch (event.type) {
     case "chat":
-      return `${name}: ${(event.payload as ChatEventPayload).text}`;
-    case "goal": {
-      const payload = event.payload as GoalEventPayload;
-      return `${name} ${payload.remove ? "cleared" : "marked"} "${payload.goal}"`;
-    }
+      return `${name}: ${event.payload.text}`;
+    case "goal":
+      return `${name} ${event.payload.remove ? "cleared" : "marked"} "${event.payload.goal}"`;
     case "color":
-      return `${name} changed color to ${(event.payload as ColorEventPayload).color}`;
+      return `${name} changed color to ${event.payload.color}`;
     case "revealed":
       return `${name} revealed the card`;
     case "connection":
-      return `${name} ${(event.payload as ConnectionEventPayload).connected ? "connected" : "disconnected"}`;
-    case "new_card": {
-      const payload = event.payload as NewCardEventPayload;
-      return `${name} generated a new card${payload.seed ? ` (seed: ${payload.seed})` : ""}`;
-    }
-    default:
-      return name;
+      return `${name} ${event.payload.connected ? "connected" : "disconnected"}`;
+    case "new_card":
+      return `${name} generated a new card${event.payload.seed ? ` (seed: ${event.payload.seed})` : ""}`;
   }
 }
 
@@ -99,7 +89,7 @@ async function onSend() {
 .chat-body {
   flex: 1;
   overflow-y: auto;
-  border: 1px solid var(--border-color, #8886);
+  border: 1px solid var(--border-color);
   border-radius: 6px;
   padding: 0.5rem;
   font-size: 0.85rem;
@@ -132,7 +122,7 @@ async function onSend() {
   flex: 1;
   padding: 0.4rem 0.5rem;
   border-radius: 4px;
-  border: 1px solid var(--border-color, #8886);
+  border: 1px solid var(--border-color);
   font: inherit;
 }
 
@@ -140,7 +130,7 @@ async function onSend() {
   padding: 0.4rem 0.9rem;
   border-radius: 6px;
   border: none;
-  background: #4f6df5;
+  background: var(--accent-color);
   color: white;
   cursor: pointer;
   font-weight: 600;

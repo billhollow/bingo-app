@@ -15,4 +15,4 @@ class IsRoomMember(BasePermission):
         room_id = view.kwargs.get("room_id")
         if not player or not getattr(player, "is_authenticated", False):
             return False
-        return str(player.room_id) == str(room_id)
+        return player.room_id == room_id

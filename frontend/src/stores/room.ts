@@ -1,21 +1,10 @@
 import { defineStore } from "pinia";
 import { computed, ref } from "vue";
 
-import * as roomsApi from "../lib/rooms-api";
-import type {
-  ColorEventPayload,
-  ConnectionEventPayload,
-  EventDTO,
-  GameDTO,
-  GoalEventPayload,
-  PlayerDTO,
-  RoomDTO,
-  SquareDTO,
-} from "../types/api";
+import { roomClient, type NewCardInput, type RoomClient } from "../lib/rooms-api";
+import type { EventDTO, GameDTO, PlayerDTO, RoomDTO, SquareDTO } from "../types/api";
 
 export const useRoomStore = defineStore("room", () => {
-  const roomId = ref<string | null>(null);
-  const token = ref<string | null>(null);
   const currentPlayerId = ref<string | null>(null);
 
   const room = ref<RoomDTO | null>(null);
@@ -27,24 +16,25 @@ export const useRoomStore = defineStore("room", () => {
 
   const currentPlayer = computed(() => players.value.find((p) => p.id === currentPlayerId.value) ?? null);
 
-  function requireCreds(): { id: string; authToken: string } {
-    if (!roomId.value || !token.value) {
-      throw new Error("Room store used before load()");
-    }
-    return { id: roomId.value, authToken: token.value };
+  // Bound to the room + token by load(); every action goes through it, so the
+  // room id and token are never threaded through call sites.
+  let boundClient: RoomClient | null = null;
+
+  function api(): RoomClient {
+    if (!boundClient) throw new Error("Room store used before load()");
+    return boundClient;
   }
 
   async function load(id: string, authToken: string, playerId: string) {
-    roomId.value = id;
-    token.value = authToken;
+    boundClient = roomClient(id, authToken);
     currentPlayerId.value = playerId;
     cardRevealed.value = false;
 
     const [settings, boardData, playersData, feed] = await Promise.all([
-      roomsApi.fetchSettings(id, authToken),
-      roomsApi.fetchBoard(id, authToken),
-      roomsApi.fetchPlayers(id, authToken),
-      roomsApi.fetchFeed(id, authToken),
+      api().settings(),
+      api().board(),
+      api().players(),
+      api().feed(),
     ]);
 
     room.value = settings.room;
@@ -55,11 +45,7 @@ export const useRoomStore = defineStore("room", () => {
   }
 
   async function refreshBoardAndSettings() {
-    const { id, authToken } = requireCreds();
-    const [settings, boardData] = await Promise.all([
-      roomsApi.fetchSettings(id, authToken),
-      roomsApi.fetchBoard(id, authToken),
-    ]);
+    const [settings, boardData] = await Promise.all([api().settings(), api().board()]);
     room.value = settings.room;
     game.value = settings.game;
     squares.value = boardData;
@@ -71,18 +57,17 @@ export const useRoomStore = defineStore("room", () => {
 
     switch (event.type) {
       case "goal": {
-        const payload = event.payload as GoalEventPayload;
-        const square = squares.value.find((s) => s.row === payload.row && s.col === payload.col);
-        if (square) square.colors = payload.colors;
+        const square = squareAt(event.payload.row, event.payload.col);
+        if (square) square.colors = event.payload.colors;
         break;
       }
       case "color": {
         const player = players.value.find((p) => p.id === event.player.id);
-        if (player) player.color = (event.payload as ColorEventPayload).color;
+        if (player) player.color = event.payload.color;
         break;
       }
       case "connection": {
-        const connected = (event.payload as ConnectionEventPayload).connected;
+        const { connected } = event.payload;
         const existing = players.value.find((p) => p.id === event.player.id);
         if (existing) {
           existing.connected = connected;
@@ -105,33 +90,32 @@ export const useRoomStore = defineStore("room", () => {
   }
 
   async function toggleSquare(row: number, col: number, color: string, remove: boolean) {
-    const { id, authToken } = requireCreds();
-    await roomsApi.markSquare(id, authToken, { row, col, color, remove });
+    await api().markSquare({ row, col, color, remove });
   }
 
   async function setColor(color: string) {
-    const { id, authToken } = requireCreds();
-    await roomsApi.changeColor(id, authToken, color);
+    await api().changeColor(color);
   }
 
   async function postChat(text: string) {
-    const { id, authToken } = requireCreds();
-    await roomsApi.sendChat(id, authToken, text);
+    await api().chat(text);
   }
 
   async function reveal() {
-    const { id, authToken } = requireCreds();
-    await roomsApi.revealCard(id, authToken);
+    await api().reveal();
     cardRevealed.value = true;
   }
 
-  async function newCard(input: roomsApi.NewCardInput) {
-    const { id, authToken } = requireCreds();
-    await roomsApi.startNewCard(id, authToken, input);
+  async function newCard(input: NewCardInput) {
+    await api().newCard(input);
+  }
+
+  function squareAt(row: number, col: number): SquareDTO | undefined {
+    return squares.value.find((s) => s.row === row && s.col === col);
   }
 
   function cellColors(row: number, col: number): string[] {
-    return squares.value.find((s) => s.row === row && s.col === col)?.colors ?? [];
+    return squareAt(row, col)?.colors ?? [];
   }
 
   function squareCountForColor(color: string): number {
@@ -157,8 +141,6 @@ export const useRoomStore = defineStore("room", () => {
   }
 
   return {
-    roomId,
-    token,
     currentPlayerId,
     currentPlayer,
     room,

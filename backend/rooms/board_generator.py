@@ -1,10 +1,20 @@
 import random
 
+from rest_framework import status
+from rest_framework.exceptions import APIException
+
 from rooms.choices import BoardType
 
 
-class InvalidBoardError(Exception):
-    pass
+class InvalidBoardError(APIException):
+    """Domain errors carry their own HTTP status so views don't translate them.
+
+    DRF's default handler already renders APIException as {"detail": "..."},
+    which is the shape this API returns everywhere - so subclassing here lets
+    every view drop its try/except and just let the exception propagate.
+    """
+
+    status_code = status.HTTP_400_BAD_REQUEST
 
 
 def generate_board(*, goals: list[str], rows: int, cols: int, board_type: str, seed: str) -> list[str]:

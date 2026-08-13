@@ -2,8 +2,10 @@
 import { computed, reactive, ref, watch } from "vue";
 
 import { errorMessage } from "../../lib/api";
+import { LOCKOUT_MODE_LABELS, type BoardConfig } from "../../lib/board";
+import { parseGoals } from "../../lib/goals";
 import { useRoomStore } from "../../stores/room";
-import type { BoardType, LockoutMode } from "../../types/api";
+import BoardConfigFields from "./BoardConfigFields.vue";
 
 const roomStore = useRoomStore();
 
@@ -11,13 +13,14 @@ const showNewCardForm = ref(false);
 const submitting = ref(false);
 const error = ref("");
 
-const form = reactive({
-  goalsText: "",
-  boardType: "fixed" as BoardType,
+const goalsText = ref("");
+const seed = ref("");
+
+const board = reactive<BoardConfig>({
+  boardType: "fixed",
   rows: 5,
   cols: 5,
-  lockoutMode: "non_lockout" as LockoutMode,
-  seed: "",
+  lockoutMode: "non_lockout",
   hideCard: false,
 });
 
@@ -27,39 +30,32 @@ watch(
   () => roomStore.game,
   (game) => {
     if (!game) return;
-    form.boardType = game.board_type;
-    form.rows = game.rows;
-    form.cols = game.cols;
-    form.lockoutMode = game.lockout_mode;
-    form.hideCard = roomStore.room?.hide_card ?? false;
+    board.boardType = game.board_type;
+    board.rows = game.rows;
+    board.cols = game.cols;
+    board.lockoutMode = game.lockout_mode;
+    board.hideCard = roomStore.room?.hide_card ?? false;
   },
   { immediate: true },
 );
 
-const requiredGoalCount = computed(() => form.rows * form.cols);
-
-function parseGoals(text: string): string[] {
-  return text
-    .split("\n")
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0);
-}
+const requiredGoalCount = computed(() => board.rows * board.cols);
 
 async function onSubmit() {
   error.value = "";
   submitting.value = true;
   try {
     await roomStore.newCard({
-      goals: parseGoals(form.goalsText),
-      board_type: form.boardType,
-      rows: form.rows,
-      cols: form.cols,
-      lockout_mode: form.lockoutMode,
-      seed: form.seed,
-      hide_card: form.hideCard,
+      goals: parseGoals(goalsText.value),
+      board_type: board.boardType,
+      rows: board.rows,
+      cols: board.cols,
+      lockout_mode: board.lockoutMode,
+      seed: seed.value,
+      hide_card: board.hideCard,
     });
     showNewCardForm.value = false;
-    form.goalsText = "";
+    goalsText.value = "";
   } catch (err) {
     error.value = errorMessage(err);
   } finally {
@@ -75,7 +71,7 @@ async function onSubmit() {
       <dt>Board</dt>
       <dd>{{ roomStore.game.rows }}×{{ roomStore.game.cols }}, {{ roomStore.game.board_type }}</dd>
       <dt>Mode</dt>
-      <dd>{{ roomStore.game.lockout_mode === "lockout" ? "Lockout" : "Non-Lockout" }}</dd>
+      <dd>{{ LOCKOUT_MODE_LABELS[roomStore.game.lockout_mode] }}</dd>
       <dt v-if="roomStore.game.seed">Seed</dt>
       <dd v-if="roomStore.game.seed">{{ roomStore.game.seed }}</dd>
     </dl>
@@ -84,53 +80,25 @@ async function onSubmit() {
       {{ showNewCardForm ? "Cancel" : "New card…" }}
     </button>
 
-    <form v-if="showNewCardForm" class="new-card-form" @submit.prevent="onSubmit">
-      <fieldset class="board-size">
-        <legend>Board size</legend>
-        <label>
-          Rows
-          <input v-model.number="form.rows" type="number" min="1" max="15" />
-        </label>
-        <label>
-          Columns
-          <input v-model.number="form.cols" type="number" min="1" max="15" />
-        </label>
-      </fieldset>
-
-      <label>
-        Board type
-        <select v-model="form.boardType">
-          <option value="fixed">Fixed ({{ requiredGoalCount }} goals)</option>
-          <option value="randomized">Randomized (at least {{ requiredGoalCount }})</option>
-        </select>
-      </label>
-
-      <label>
-        Goals (one per line)
-        <textarea v-model="form.goalsText" rows="6" required></textarea>
-      </label>
-
-      <label>
-        Mode
-        <select v-model="form.lockoutMode">
-          <option value="non_lockout">Non-Lockout</option>
-          <option value="lockout">Lockout</option>
-        </select>
-      </label>
-
-      <label>
-        Seed (optional)
-        <input v-model="form.seed" placeholder="random" />
-      </label>
-
-      <label class="checkbox">
-        <input v-model="form.hideCard" type="checkbox" />
-        Hide card initially
-      </label>
+    <form v-if="showNewCardForm" class="stack-form new-card-form" @submit.prevent="onSubmit">
+      <BoardConfigFields v-model="board" :required-goal-count="requiredGoalCount">
+        <template #goals>
+          <label>
+            Goals (one per line)
+            <textarea v-model="goalsText" rows="6" required></textarea>
+          </label>
+        </template>
+        <template #extra>
+          <label>
+            Seed (optional)
+            <input v-model="seed" placeholder="random" />
+          </label>
+        </template>
+      </BoardConfigFields>
 
       <p v-if="error" class="error">{{ error }}</p>
 
-      <button type="submit" :disabled="submitting">
+      <button type="submit" class="btn-primary" :disabled="submitting">
         {{ submitting ? "Generating…" : "Generate new card" }}
       </button>
     </form>
@@ -162,72 +130,18 @@ async function onSubmit() {
 .toggle {
   padding: 0.35rem 0.7rem;
   border-radius: 5px;
-  border: 1px solid var(--border-color, #8886);
+  border: 1px solid var(--border-color);
   background: transparent;
   color: inherit;
   cursor: pointer;
   font-size: 0.85rem;
 }
 
+/* The panel is a sidebar, so its copy of the shared form runs a size smaller.
+ * font-size on the root is the only difference; the controls inherit it. */
 .new-card-form {
   margin-top: 0.75rem;
-  display: flex;
-  flex-direction: column;
   gap: 0.6rem;
-}
-
-.new-card-form label {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  font-weight: 600;
   font-size: 0.85rem;
-}
-
-.new-card-form label.checkbox {
-  flex-direction: row;
-  align-items: center;
-  font-weight: 400;
-}
-
-.board-size {
-  display: flex;
-  gap: 1rem;
-  border: 1px solid var(--border-color, #8886);
-  border-radius: 6px;
-}
-
-.board-size label {
-  flex: 1;
-}
-
-input,
-select,
-textarea {
-  padding: 0.35rem 0.5rem;
-  font: inherit;
-  border-radius: 4px;
-  border: 1px solid var(--border-color, #8886);
-}
-
-.error {
-  color: #d33;
-  font-size: 0.85rem;
-}
-
-button[type="submit"] {
-  align-self: flex-start;
-  padding: 0.45rem 1rem;
-  font-weight: 600;
-  border-radius: 6px;
-  border: none;
-  background: #4f6df5;
-  color: white;
-  cursor: pointer;
-}
-
-button:disabled {
-  opacity: 0.6;
-  cursor: default;
 }
 </style>

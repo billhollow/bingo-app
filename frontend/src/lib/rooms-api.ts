@@ -24,34 +24,10 @@ export interface CreateRoomInput {
   is_spectator?: boolean;
 }
 
-export function createRoom(input: CreateRoomInput) {
-  return apiPost<RoomSessionDTO>("/api/rooms/", input);
-}
-
 export interface JoinRoomInput {
   passphrase: string;
   player_name: string;
   is_spectator?: boolean;
-}
-
-export function joinRoom(roomId: string, input: JoinRoomInput) {
-  return apiPost<RoomSessionDTO>(`/api/rooms/${roomId}/join/`, input);
-}
-
-export function fetchBoard(roomId: string, token: string) {
-  return apiGet<SquareDTO[]>(`/api/rooms/${roomId}/board/`, { token });
-}
-
-export function fetchSettings(roomId: string, token: string) {
-  return apiGet<RoomSettingsDTO>(`/api/rooms/${roomId}/settings/`, { token });
-}
-
-export function fetchPlayers(roomId: string, token: string) {
-  return apiGet<PlayerDTO[]>(`/api/rooms/${roomId}/players/`, { token });
-}
-
-export function fetchFeed(roomId: string, token: string) {
-  return apiGet<EventDTO[]>(`/api/rooms/${roomId}/feed/`, { token });
 }
 
 export interface NewCardInput {
@@ -64,10 +40,6 @@ export interface NewCardInput {
   hide_card?: boolean;
 }
 
-export function startNewCard(roomId: string, token: string, input: NewCardInput) {
-  return apiPost<GameDTO>(`/api/rooms/${roomId}/new-card/`, input, { token });
-}
-
 export interface MarkSquareInput {
   row: number;
   col: number;
@@ -75,18 +47,37 @@ export interface MarkSquareInput {
   remove?: boolean;
 }
 
-export function markSquare(roomId: string, token: string, input: MarkSquareInput) {
-  return apiPost<EventDTO>(`/api/rooms/${roomId}/goal/`, input, { token });
+// The two endpoints you can reach without a token, because they're how you
+// get one.
+
+export function createRoom(input: CreateRoomInput) {
+  return apiPost<RoomSessionDTO>("/api/rooms/", input);
 }
 
-export function changeColor(roomId: string, token: string, color: string) {
-  return apiPost<EventDTO>(`/api/rooms/${roomId}/color/`, { color }, { token });
+export function joinRoom(roomId: string, input: JoinRoomInput) {
+  return apiPost<RoomSessionDTO>(`/api/rooms/${roomId}/join/`, input);
 }
 
-export function sendChat(roomId: string, token: string, text: string) {
-  return apiPost<EventDTO>(`/api/rooms/${roomId}/chat/`, { text }, { token });
+/** Every room-scoped endpoint, bound to one room and token.
+ *
+ * Mirrors the nesting in backend/rooms/urls.py: the `/api/rooms/<id>/` prefix
+ * and the bearer token are each written once here, so callers name only the
+ * action. The room store builds one of these in load() and holds it. */
+export function roomClient(roomId: string, token: string) {
+  const path = (suffix: string) => `/api/rooms/${roomId}/${suffix}`;
+  const auth = { token };
+
+  return {
+    board: () => apiGet<SquareDTO[]>(path("board/"), auth),
+    settings: () => apiGet<RoomSettingsDTO>(path("settings/"), auth),
+    players: () => apiGet<PlayerDTO[]>(path("players/"), auth),
+    feed: () => apiGet<EventDTO[]>(path("feed/"), auth),
+    newCard: (input: NewCardInput) => apiPost<GameDTO>(path("new-card/"), input, auth),
+    markSquare: (input: MarkSquareInput) => apiPost<EventDTO>(path("goal/"), input, auth),
+    changeColor: (color: string) => apiPost<EventDTO>(path("color/"), { color }, auth),
+    chat: (text: string) => apiPost<EventDTO>(path("chat/"), { text }, auth),
+    reveal: () => apiPost<EventDTO>(path("reveal/"), {}, auth),
+  };
 }
 
-export function revealCard(roomId: string, token: string) {
-  return apiPost<EventDTO>(`/api/rooms/${roomId}/reveal/`, {}, { token });
-}
+export type RoomClient = ReturnType<typeof roomClient>;
